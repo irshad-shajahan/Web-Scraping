@@ -1,89 +1,90 @@
 import puppeteer from "puppeteer";
 import fs from "fs";
-import { url } from "inspector";
 import { Parser } from "json2csv";
 import translate from "@iamtraction/google-translate";
+import { Chandlers2, Chandliers1, ExteriorLight, InteriorLight, LampShades, SwitchKeys1, SwitchKeys2, SwitchKeys3, WallLight } from "./links.js";
 
 const baseUrl = "https://janoubco.com/";
 
-const links = [
-  {
-    name: "كشافات سلندر",
-    subCatId: "664a4486b1c689cd118f5d3b",
-    url: "https://janoubco.com/%D9%83%D8%B4%D8%A7%D9%81%D8%A7%D8%AA-%D8%B3%D9%84%D9%86%D8%AF%D8%B1-1",
-  },
-  {
-    name: "كشافات لطش سقف",
-    subCatId: "664a45a1b1c689cd118f5d42",
-    url: "https://janoubco.com/%D9%84%D8%B7%D8%B4-%D8%B8%D8%A7%D9%87%D8%B1",
-  },
-  {
-    name: "داون لايت",
-    subCatId: "664a4602b1c689cd118f5d49",
-    url: "https://janoubco.com/%D8%AF%D8%A7%D9%88%D9%86-%D9%84%D8%A7%D9%8A%D8%AA",
-  },
-  {
-    name: "إطار جرم سبوت لايت",
-    subCatId: "664a5cc758dce04055a05f31",
-    url: "https://janoubco.com/%D8%A5%D8%B7%D8%A7%D8%B1-%D8%B3%D8%A8%D9%88%D8%AA-%D9%84%D8%A7%D9%8A%D8%AA",
-  },
-  {
-    name: "لمبات قزاز تيوب",
-    subCatId: "664a5d0f58dce04055a05f38",
-    url: "https://janoubco.com/%D9%84%D9%85%D8%A8%D8%A7%D8%AA-%D9%82%D8%B2%D8%A7%D8%B2-%D8%AA%D9%8A%D9%88%D8%A8",
-  },
-  {
-    name: "لمبات كروية",
-    subCatId: "664a5d5d58dce04055a05f3f",
-    url: "https://janoubco.com/%D9%84%D9%85%D8%A8%D8%A7%D8%AA-%D9%83%D8%B1%D9%88%D9%8A%D8%A9",
-  },
-  {
-    name: "ليد بانل",
-    subCatId: "664a5d9e58dce04055a05f46",
-    url: "https://janoubco.com/%D9%84%D9%8A%D8%AF-%D8%A8%D8%A7%D9%86%D9%84",
-  },
-  {
-    name: "لمبة ليد مسطحة",
-    subCatId: "664a5dd358dce04055a05f4d",
-    url: "https://janoubco.com/%D9%84%D9%85%D8%A8%D8%A9-%D9%84%D9%8A%D8%AF-%D9%85%D8%B3%D8%B7%D8%AD%D8%A9",
-  },
-  {
-    name: "لمبة ليد فيلمونت ديكورية",
-    subCatId: "664a5e0258dce04055a05f54",
-    url: "https://janoubco.com/%D9%84%D9%85%D8%A8%D8%A9-%D9%84%D9%8A%D8%AF-%D9%81%D9%8A%D9%84%D9%85%D9%88%D9%86%D8%AA-%D8%AF%D9%8A%D9%83%D9%88%D8%B1%D9%8A%D8%A9",
-  },
-  {
-    name: "لمبات GU10 سبوت لايت",
-    subCatId: "664a5e3c58dce04055a05f5b",
-    url: "https://janoubco.com/%D9%84%D9%85%D8%A8%D8%A7%D8%AA-gu10",
-  },
+// const links = [
+//   {
+//     name: "المنزل الذكي",
+//     subCatId: "",
+//     url: "https://janoubco.com/%D8%A7%D9%84%D9%85%D9%86%D8%B2%D9%84-%D8%A7%D9%84%D8%B0%D9%83%D9%8A",
+//   },
+  
+// ];
+const links = Chandlers2 
 
-];
+const categoryId = "664e27a5c5a95f89b2fa9885"
+const translateProduct = async (element, elem) => {
+  try {
+    const nameTranslation = await translate(element.name, { to: "en" });
+    const descriptionTranslation = await translate(element.description, { to: "en" });
+
+    return {
+      productName: nameTranslation.text,
+      arabicName: element.name,
+      productDescription: descriptionTranslation.text,
+      ardescription: element.description,
+      productSubCategoryId: elem.subCatId,
+      productCategoryId: categoryId,
+      productPrice:element.offerPrice,
+      productMrp:element.actualPrice
+    };
+  } catch (err) {
+    console.error(err);
+    return null;
+  }
+};
+
+function saveCSVToFile(csvData, filename) {
+  fs.writeFile(filename, csvData, (err) => {
+    if (err) {
+      console.error("Error writing to CSV file", err);
+    } else {
+      console.log("CSV file saved successfully");
+    }
+  });
+}
+
+async function organise(data) {
+    try {
+      // console.log(data)
+      const filteredData = data.filter(item => item !== null);
+      const flattenedData = filteredData.flat();
+      // console.log(flattenedData);
+      const json2csvParser = new Parser();
+      const csv = json2csvParser.parse(flattenedData);
+      // console.log(csv);
+      saveCSVToFile(csv, "data2.csv");
+    } catch (err) {
+      console.log("Error parsing JSON:", err);
+    }
+}
 
 async function scrape() {
   const browser = await puppeteer.launch({ headless: false });
   const page = await browser.newPage();
 
-  await page.goto(baseUrl);
-  // Set screen size
+  // await page.goto(baseUrl);
   await page.setViewport({ width: 1080, height: 1024 });
-
-  // const links = await page.$$eval(".module-banners .module-body", (banners) =>
-  //   banners.map((e) => {
-  //     return {
-  //       url: e.querySelector("a").getAttribute("href"),
-  //     };
-  //   })
-  // );
-
   const data = {};
+  const dataArray =[]
 
   for (let i = 0; i < links.length; i++) {
     const subCategory = [];
     if (!links[i].url) continue;
 
     const newPage = await browser.newPage();
-    await newPage.goto(`${links[i].url}?limit=10000`);
+    // await newPage.goto(`${links[i].url}?limit=10000`);
+    try {
+      await newPage.goto(`${links[i].url}?limit=10000`, { waitUntil: 'networkidle0' }); // Wait for full page load and network stability
+    } catch (error) {
+      console.error(`Error navigating to ${links[i].url}:`, error.message);
+      await newPage.close();
+      continue;
+    }
 
     try {
       await newPage.waitForSelector(".product-layout", { timeout: 10000 });
@@ -99,21 +100,26 @@ async function scrape() {
       if (products.length > 0) {
         return products.map((e) => ({
           url: e.querySelector(".image > a").getAttribute("href") || "",
-          // image: e.querySelector(".img-responsive")?.getAttribute("src") || "",
-          // name: e.querySelector(".name > a")?.innerHTML || "",
-          // price: e.querySelector(".price-normal")?.innerText || "",
-          // actualPrice: e.querySelector(".booknow1 > span")?.innerHTML || "",
         }));
       }
     });
     for (let j = 0; j < productLinks.length; j++) {
+      const progress = ((((j+1)/productLinks.length)/links.length)*100).toFixed(2)
+      console.log('Product ',j+1,' out of',productLinks.length,' in subcategory',i+1,'out of',links.length,'-',progress+'%')
       if (!productLinks[j].url) continue;
       const newProductPage = await browser.newPage();
-      await newProductPage.goto(productLinks[j].url);
+      // await newProductPage.goto(productLinks[j].url);
+      try {
+        await newProductPage.goto(productLinks[j].url, { waitUntil: 'networkidle0' }); // Wait for full page load and network stability
+      } catch (error) {
+        console.error(`Error navigating to product page ${productLinks[j].url}:`, error.message);
+        await newProductPage.close();
+        continue;
+      }
 
       try {
         await newProductPage.waitForSelector(".product-info", {
-          timeout: 10000,
+          timeout: 2000,
         });
       } catch (error) {
         console.log(
@@ -149,91 +155,43 @@ async function scrape() {
       subCategory.push(productDetail);
       await newProductPage.close();
     }
-    console.log("-------------------");
-    console.log(subCategory);
-    data[i] = subCategory;
+
+    const finalSubCategory = await Promise.all(subCategory.map(element=>translateProduct(element,links[i])))
+    console.log(finalSubCategory)
+    data[i] = finalSubCategory;
+    dataArray.push(finalSubCategory)
     await newPage.close();
   }
 
-  fs.writeFile("input.json", JSON.stringify(data), function (err) {
-    if (err) throw err;
-    console.log("complete");
-  });
+  // organise(dataArray)
+
+  // fs.writeFile("input.json", JSON.stringify(data), function (err) {
+  //   if (err) throw err;
+  //   console.log("complete");
+  // });
+
+  try {
+    organise(dataArray);  
+    await fs.promises.writeFile("input2.json", JSON.stringify(data), 'utf8'); 
+    console.log("Data saved successfully.");
+  } catch (error) {
+    console.error("Error saving data:", error.message);
+  }
 
   browser.close();
+  return
 }
 
 // scrape()
+//  
 
-function saveCSVToFile(csvData, filename) {
-  fs.writeFile(filename, csvData, (err) => {
-    if (err) {
-      console.error("Error writing to CSV file", err);
-    } else {
-      console.log("CSV file saved successfully");
-    }
-  });
-}
 
-async function organise(data) {
-  const categoryId = "664a3d90b1c689cd118f5d34";
-  fs.readFile("./input.json", "utf8", async(err, jsonString) => {
-    if (err) {
-      console.log("Error reading file:", err);
-      return;
-    }
-    try {
-      const data = JSON.parse(jsonString); // Parse the JSON data/'
-      const translateProduct = async (element, elem) => {
-        try {
-          const nameTranslation = await translate(element.name, { to: "en" });
-          const descriptionTranslation = await translate(element.description, { to: "en" });
-      
-          return {
-            productName: nameTranslation.text,
-            arabicName: element.name,
-            productDescription: descriptionTranslation.text,
-            ardescription: element.description,
-            productSubCategoryId: elem.subCatId,
-            productCategoryId: categoryId,
-            productPrice:element.offerPrice,
-            productMrp:element.actualPrice
-          };
-        } catch (err) {
-          console.error(err);
-          return null;
-        }
-      };
-      
-      const finalData = await Promise.all(links.map(async (elem, index) => {
-        if (data[index]) {
-          if (data[index].length > 0) {
-            const subCatData = await Promise.all(data[index].map(element => translateProduct(element, elem)));
-            console.log('subCatData', subCatData);
-            return subCatData;
-          }
-          return [];
-        } else {
-          return null;
-        }
-      }));
-      
-      const filteredData = finalData.filter(item => item !== null);
-      const flattenedData = filteredData.flat();
-      console.log(flattenedData);
-      const json2csvParser = new Parser();
-      const csv = json2csvParser.parse(flattenedData);
-      console.log(csv);
-      saveCSVToFile(csv, "data.csv");
-    } catch (err) {
-      console.log("Error parsing JSON:", err);
-    }
-  });
-  // const data = [ 
-  //   { name: "John Doe", age: 29, city: "New York" },
-  //   { name: "Jane Smith", age: 34, city: "Los Angeles" },
-  //   { name: "Sam Green", age: 23, city: "Chicago" },
-  // ];
-}
+
+
+
+
+
+
+
 
 // organise();

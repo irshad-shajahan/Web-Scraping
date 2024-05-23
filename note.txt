@@ -1,0 +1,3 @@
+Translate the text on each iteration that is more better,
+find a way to pause the loop
+else convert it to csv and use python
