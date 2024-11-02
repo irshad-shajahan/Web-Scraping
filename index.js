@@ -2,21 +2,11 @@ import puppeteer from "puppeteer";
 import fs from "fs";
 import { Parser } from "json2csv";
 import translate from "@iamtraction/google-translate";
-import { Chandlers2, Chandliers1, ExteriorLight, InteriorLight, LampShades, SwitchKeys1, SwitchKeys2, SwitchKeys3, WallLight } from "./links.js";
+import { makuta } from "./links.js";
 
-const baseUrl = "https://janoubco.com/";
+const baseUrl = "https://oscotools.com/";
+const links = makuta  
 
-// const links = [
-//   {
-//     name: "المنزل الذكي",
-//     subCatId: "",
-//     url: "https://janoubco.com/%D8%A7%D9%84%D9%85%D9%86%D8%B2%D9%84-%D8%A7%D9%84%D8%B0%D9%83%D9%8A",
-//   },
-  
-// ];
-const links = Chandlers2 
-
-const categoryId = "664e27a5c5a95f89b2fa9885"
 const translateProduct = async (element, elem) => {
   try {
     const nameTranslation = await translate(element.name, { to: "en" });
@@ -28,9 +18,10 @@ const translateProduct = async (element, elem) => {
       productDescription: descriptionTranslation.text,
       ardescription: element.description,
       productSubCategoryId: elem.subCatId,
-      productCategoryId: categoryId,
+      productCategoryId: elem.catId,
       productPrice:element.offerPrice,
-      productMrp:element.actualPrice
+      productBrandId:elem.brandId
+      // productMrp:element.actualPrice
     };
   } catch (err) {
     console.error(err);
@@ -71,7 +62,7 @@ async function scrape() {
   await page.setViewport({ width: 1080, height: 1024 });
   const data = {};
   const dataArray =[]
-
+  
   for (let i = 0; i < links.length; i++) {
     const subCategory = [];
     if (!links[i].url) continue;
@@ -79,7 +70,7 @@ async function scrape() {
     const newPage = await browser.newPage();
     // await newPage.goto(`${links[i].url}?limit=10000`);
     try {
-      await newPage.goto(`${links[i].url}?limit=10000`, { waitUntil: 'networkidle0' }); // Wait for full page load and network stability
+      await newPage.goto(`${links[i].url}?products-per-page=all`, { waitUntil: 'networkidle0' }); // Wait for full page load and network stability
     } catch (error) {
       console.error(`Error navigating to ${links[i].url}:`, error.message);
       await newPage.close();
@@ -87,7 +78,7 @@ async function scrape() {
     }
 
     try {
-      await newPage.waitForSelector(".product-layout", { timeout: 10000 });
+      await newPage.waitForSelector(".product-inner", { timeout: 10000 });
     } catch (error) {
       console.log(
         `Selector .product-layout not found on page: ${links[i].url}`
@@ -96,10 +87,10 @@ async function scrape() {
       continue;
     }
 
-    const productLinks = await newPage.$$eval(".product-layout", (products) => {
+    const productLinks = await newPage.$$eval(".product-inner", (products) => {
       if (products.length > 0) {
         return products.map((e) => ({
-          url: e.querySelector(".image > a").getAttribute("href") || "",
+          url: e.querySelector(".woocommerce-LoopProduct-link").getAttribute("href") || "",
         }));
       }
     });
@@ -118,7 +109,7 @@ async function scrape() {
       }
 
       try {
-        await newProductPage.waitForSelector(".product-info", {
+        await newProductPage.waitForSelector(".type-product", {
           timeout: 2000,
         });
       } catch (error) {
@@ -129,15 +120,18 @@ async function scrape() {
         continue;
       }
       const productDetail = await newProductPage.evaluate(() => {
-        const titleElement = document.querySelector(".title.page-title");
-        const priceElement = document.querySelector(
-          ".product-price span:nth-child(3)"
-        );
-        const priceElement2 = document.querySelector(
-          ".booknow1 > span > span:nth-child(1)"
-        );
+        const titleElement = document.querySelector(".product_title");
+        const priceElement = document.querySelector(".price");
+        // const priceElement2 = document.querySelector(
+        //   ".booknow1 > span > span:nth-child(1)"
+        // );
+        let offerPrice = "";
+        if (priceElement) {
+         offerPrice = priceElement.textContent.split("ر.س")[0].split(".")[0];
+        }
+
         const descriptionElements =
-          document.querySelectorAll(".product-info p");
+          document.querySelectorAll(".woocommerce-product-details__short-description p");
         let description = "";
         descriptionElements.forEach((p, index) => {
           description += p.innerText;
@@ -147,13 +141,14 @@ async function scrape() {
         });
         return {
           name: titleElement ? titleElement.innerText : "",
-          actualPrice: priceElement ? priceElement2.innerText : "",
-          offerPrice: priceElement ? priceElement.innerText : "",
+          // actualPrice: priceElement ? priceElement2.innerText : "",
+          offerPrice:offerPrice,
           description: description,
         };
       });
       subCategory.push(productDetail);
       await newProductPage.close();
+      console.log(productDetail)
     }
 
     const finalSubCategory = await Promise.all(subCategory.map(element=>translateProduct(element,links[i])))
@@ -161,6 +156,7 @@ async function scrape() {
     data[i] = finalSubCategory;
     dataArray.push(finalSubCategory)
     await newPage.close();
+    console.log(finalSubCategory)
   }
 
   // organise(dataArray)
@@ -182,16 +178,4 @@ async function scrape() {
   return
 }
 
-// scrape()
-//  
-
-
-
-
-
-
-
-
-
-
-// organise();
+scrape()
